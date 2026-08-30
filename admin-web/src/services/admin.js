@@ -34,3 +34,7 @@ export async function updateReservationStatus(reservationId, status) {
     body: JSON.stringify({ status }),
   });
 }
+
+export async function getAdminCheckIns() {
+  return apiRequest("/admin/check-ins");
+}

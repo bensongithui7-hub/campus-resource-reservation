@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import {
   adminLogin,
@@ -12,6 +12,7 @@ import {
   updateResource,
   deleteResource,
   updateResourceStatus,
+  getAdminCheckIns,
 } from "./services/admin";
 
 function LoginScreen({ onLogin }) {
@@ -34,6 +35,7 @@ function LoginScreen({ onLogin }) {
       setLoading(false);
     }
   }
+
 
   return (
     <div className="login-page">
@@ -83,6 +85,9 @@ function AdminDashboard({ user, onLogout }) {
   const [reservationsLoading, setReservationsLoading] = useState(false);
   const [reservationsError, setReservationsError] = useState("");
   const [updatingReservationId, setUpdatingReservationId] = useState(null);
+  const [checkIns, setCheckIns] = useState([]);
+  const [checkInsLoading, setCheckInsLoading] = useState(false);
+  const [checkInsError, setCheckInsError] = useState("");
 
   const menuItems = [
     "Dashboard",
@@ -136,6 +141,28 @@ function AdminDashboard({ user, onLogout }) {
     loadReservations();
   }, [activePage]);
 
+  useEffect(() => {
+    if (activePage !== "Check-ins") {
+      return;
+    }
+
+    async function loadCheckIns() {
+      setCheckInsLoading(true);
+      setCheckInsError("");
+
+      try {
+        const data = await getAdminCheckIns();
+        setCheckIns(data.check_ins || []);
+      } catch (err) {
+        setCheckInsError(err.message);
+      } finally {
+        setCheckInsLoading(false);
+      }
+    }
+
+    loadCheckIns();
+  }, [activePage]);
+
   return (
     <div className="admin-app">
       <aside className="sidebar">
@@ -156,7 +183,7 @@ function AdminDashboard({ user, onLogout }) {
               }
               onClick={() => setActivePage(item)}
             >
-              <span>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢</span>
+              <span></span>
               {item}
             </button>
           ))}
@@ -333,7 +360,7 @@ function AdminDashboard({ user, onLogout }) {
                         <h3>{resource.name}</h3>
                         <p>{resource.description || "No description provided."}</p>
                         <small>
-                          Location: {resource.location} â€¢ Capacity:{" "}
+                          Location: {resource.location}  Capacity:{" "}
                           {resource.capacity}
                         </small>
                       </div>
@@ -401,12 +428,12 @@ function AdminDashboard({ user, onLogout }) {
                         <p>
                           User #{reservation.user_id}
                           {reservation.purpose
-                            ? ` • ${reservation.purpose}`
+                            ? `  ${reservation.purpose}`
                             : ""}
                         </p>
 
                         <small>
-                          Date: {reservation.reservation_date} • Time:{" "}
+                          Date: {reservation.reservation_date}  Time:{" "}
                           {reservation.start_time} - {reservation.end_time}
                         </small>
                       </div>
@@ -499,17 +526,83 @@ function AdminDashboard({ user, onLogout }) {
           </section>
         )}
 
-        {activePage !== "Dashboard" &&
-          activePage !== "Resources" &&
-          activePage !== "Reservations" && (
-            <section className="placeholder-panel">
-              <div className="placeholder-icon">CR</div>
-              <h2>{activePage}</h2>
-              <p>
-                This module is ready for integration with the Flask API.
-              </p>
-            </section>
-          )}
+        {activePage === "Check-ins" && (
+          <section className="resources-page">
+            <div className="page-section-header">
+              <div>
+                <h2>Check-ins</h2>
+                <p>Monitor student reservation check-ins.</p>
+              </div>
+            </div>
+
+            {checkInsLoading && (
+              <div className="placeholder-panel">
+                <div className="placeholder-icon">CR</div>
+                <h2>Loading check-ins...</h2>
+                <p>Please wait while check-in records are retrieved.</p>
+              </div>
+            )}
+
+            {checkInsError && (
+              <div className="login-error">
+                {checkInsError}
+              </div>
+            )}
+
+            {!checkInsLoading && !checkInsError && (
+              <div className="resource-list">
+                {checkIns.length === 0 ? (
+                  <div className="placeholder-panel">
+                    <div className="placeholder-icon">CR</div>
+                    <h2>No check-ins found</h2>
+                    <p>There are currently no check-in records in the system.</p>
+                  </div>
+                ) : (
+                  checkIns.map((checkIn) => (
+                    <div className="resource-card" key={checkIn.id}>
+                      <div>
+                        <span className="eyebrow">
+                          CHECK-IN #{checkIn.id}
+                        </span>
+
+                        <h3>Reservation #{checkIn.reservation_id}</h3>
+
+                        <p>QR Token: {checkIn.qr_token}</p>
+
+                        <small>
+                          Checked in:{" "}
+                          {checkIn.checked_in_at
+                            ? new Date(checkIn.checked_in_at).toLocaleString()
+                            : "Not checked in"}
+                        </small>
+                      </div>
+
+                      <div>
+                        <span
+                          className={
+                            checkIn.status === "CHECKED_IN"
+                              ? "status confirmed"
+                              : "status cancelled"
+                          }
+                        >
+                          {checkIn.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activePage === "Users" && (
+          <section className="placeholder-panel">
+            <div className="placeholder-icon">CR</div>
+            <h2>Users</h2>
+            <p>This module is ready for integration with the Flask API.</p>
+          </section>
+        )}
       </main>
     </div>
   );
@@ -548,6 +641,9 @@ function App() {
 }
 
 export default App;
+
+
+
 
 
 

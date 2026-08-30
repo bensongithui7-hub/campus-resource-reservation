@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
 
 from app import db
-from app.models import Reservation, Resource
+from app.models import CheckIn, Reservation, Resource
 
 
 admin_bp = Blueprint("admin", __name__)
@@ -51,6 +51,36 @@ def get_all_reservations():
                 )
             }
             for reservation in reservations
+        ]
+    }), 200
+
+
+@admin_bp.route("/admin/check-ins", methods=["GET"])
+@jwt_required()
+def get_all_check_ins():
+    access_error = admin_required()
+
+    if access_error:
+        return access_error
+
+    check_ins = CheckIn.query.order_by(
+        CheckIn.id
+    ).all()
+
+    return jsonify({
+        "success": True,
+        "check_ins": [
+            {
+                "id": check_in.id,
+                "reservation_id": check_in.reservation_id,
+                "qr_token": check_in.qr_token,
+                "status": check_in.status,
+                "checked_in_at": (
+                    check_in.checked_in_at.isoformat()
+                    if check_in.checked_in_at else None
+                )
+            }
+            for check_in in check_ins
         ]
     }), 200
 
