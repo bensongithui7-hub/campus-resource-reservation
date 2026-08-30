@@ -26,4 +26,7 @@ def create_app():
     from app.routes.protected import protected_bp
     app.register_blueprint(protected_bp, url_prefix="/api")
 
+    from app.routes.resource import resource_bp
+    app.register_blueprint(resource_bp, url_prefix="/api")
+
     return app
