@@ -20,4 +20,10 @@ def create_app():
     from app.routes.health import health_bp
     app.register_blueprint(health_bp, url_prefix="/api")
 
+    from app.routes.auth import auth_bp
+    app.register_blueprint(auth_bp, url_prefix="/api")
+
+    from app.routes.protected import protected_bp
+    app.register_blueprint(protected_bp, url_prefix="/api")
+
     return app
