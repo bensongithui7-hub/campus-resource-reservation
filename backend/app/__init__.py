@@ -29,4 +29,13 @@ def create_app():
     from app.routes.resource import resource_bp
     app.register_blueprint(resource_bp, url_prefix="/api")
 
+    from app.routes.reservation import reservation_bp
+    app.register_blueprint(reservation_bp, url_prefix="/api")
+
+    from app.routes.check_in import check_in_bp
+    app.register_blueprint(check_in_bp, url_prefix="/api") 
+
+    from app.routes.admin import admin_bp
+    app.register_blueprint(admin_bp, url_prefix="/api")
+
     return app
