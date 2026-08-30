@@ -1,0 +1,51 @@
+CREATE DATABASE IF NOT EXISTS campus_reservation;
+
+USE campus_reservation;
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    student_id VARCHAR(50) UNIQUE,
+    email VARCHAR(120) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('STUDENT', 'ADMIN') NOT NULL DEFAULT 'STUDENT',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE resources (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    type ENUM('LABORATORY', 'STUDY_ROOM', 'EQUIPMENT') NOT NULL,
+    description TEXT,
+    location VARCHAR(150) NOT NULL,
+    capacity INT DEFAULT 1,
+    status ENUM('AVAILABLE', 'UNAVAILABLE') NOT NULL DEFAULT 'AVAILABLE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE reservations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    resource_id INT NOT NULL,
+    reservation_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    purpose VARCHAR(255),
+    status ENUM('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED')
+        NOT NULL DEFAULT 'CONFIRMED',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (resource_id) REFERENCES resources(id)
+);
+
+CREATE TABLE check_ins (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reservation_id INT NOT NULL UNIQUE,
+    qr_token VARCHAR(255) NOT NULL UNIQUE,
+    checked_in_at TIMESTAMP NULL,
+    status ENUM('NOT_CHECKED_IN', 'CHECKED_IN')
+        NOT NULL DEFAULT 'NOT_CHECKED_IN',
+
+    FOREIGN KEY (reservation_id) REFERENCES reservations(id)
+);
