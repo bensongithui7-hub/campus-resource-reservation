@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 import {
@@ -22,6 +22,14 @@ import {
   getCheckIn,
   performCheckIn,
 } from "./services/checkin";
+
+
+function formatResourceType(type) {
+  return type
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 
 function App() {
@@ -266,7 +274,7 @@ function Dashboard({ user, setPage }) {
 
       <div className="dashboard-cards">
         <div className="info-card">
-          <span className="card-icon">R</span>
+          <span className="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
           <h3>Resources</h3>
           <p>
             Browse laboratories, study rooms and equipment.
@@ -274,7 +282,7 @@ function Dashboard({ user, setPage }) {
         </div>
 
         <div className="info-card">
-          <span className="card-icon">B</span>
+          <span className="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M8 14h3M13 14h3M8 17h3"/></svg></span>
           <h3>Reservations</h3>
           <p>
             View and manage your existing reservations.
@@ -282,7 +290,7 @@ function Dashboard({ user, setPage }) {
         </div>
 
         <div className="info-card">
-          <span className="card-icon">?</span>
+          <span className="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h3M8 15h8"/><path d="M15 11h1"/></svg></span>
           <h3>Check-in</h3>
           <p>
             Generate your check-in token for confirmed reservations.
@@ -327,7 +335,7 @@ function Resources() {
 
   return (
     <section>
-      <div className="page-heading">
+      <div className="page-header">
         <div>
           <h1>Campus Resources</h1>
           <p>Available resources for student reservations.</p>
@@ -346,7 +354,7 @@ function Resources() {
           {resources.map((resource) => (
             <article className="resource-card" key={resource.id}>
               <div className="resource-header">
-                <span>{resource.type}</span>
+                <span>{formatResourceType(resource.type)}</span>
 
                 <span
                   className={
@@ -423,7 +431,7 @@ function ResourceDetailsModal({ resource, onClose }) {
         <h2>{resource.name}</h2>
 
         <p>
-          <strong>Type:</strong> {resource.type}
+          <strong>Type:</strong> {formatResourceType(resource.type)}
         </p>
 
         <p>
@@ -492,62 +500,68 @@ function ReservationModal({ resource, onClose }) {
           &times;
         </button>
 
-        <h2>Reserve {resource.name}</h2>
+        <div className="modal-body">
+          <h2>Reserve {resource.name}</h2>
 
-        <p>
-          Location: {resource.location}
-        </p>
+          <p>
+            Location: {resource.location}
+          </p>
 
-        {error && <div className="alert error">{error}</div>}
-        {message && <div className="alert success">{message}</div>}
+          {error && <div className="alert error">{error}</div>}
+          {message && <div className="alert success">{message}</div>}
 
-        <form onSubmit={submit}>
-          <label>
-            Reservation Date
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </label>
+          <form id="reservation-form" onSubmit={submit}>
+            <label>
+              Reservation Date
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </label>
 
-          <label>
-            Start Time
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              required
-            />
-          </label>
+            <label>
+              Start Time
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                required
+              />
+            </label>
 
-          <label>
-            End Time
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              required
-            />
-          </label>
+            <label>
+              End Time
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                required
+              />
+            </label>
 
-          <label>
-            Purpose
-            <textarea
-              value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
-              placeholder="Why do you need this resource?"
-            />
-          </label>
+            <label>
+              Purpose
+              <textarea
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                placeholder="Why do you need this resource?"
+              />
+            </label>
+          </form>
+        </div>
 
+        <div className="modal-footer">
           <button
             className="primary-button"
+            type="submit"
+            form="reservation-form"
             disabled={loading}
           >
             {loading ? "Creating..." : "Confirm Reservation"}
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );
@@ -556,6 +570,7 @@ function ReservationModal({ resource, onClose }) {
 
 function Reservations() {
   const [reservations, setReservations] = useState([]);
+  const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -565,9 +580,13 @@ function Reservations() {
     try {
       setLoading(true);
 
-      const data = await getReservations();
+      const [reservationData, resourceData] = await Promise.all([
+        getReservations(),
+        getResources(),
+      ]);
 
-      setReservations(data.reservations || []);
+      setReservations(reservationData.reservations || []);
+      setResources(resourceData.resources || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -580,10 +599,14 @@ function Reservations() {
 
     async function loadInitialReservations() {
       try {
-        const data = await getReservations();
+        const [reservationData, resourceData] = await Promise.all([
+          getReservations(),
+          getResources(),
+        ]);
 
         if (!cancelled) {
-          setReservations(data.reservations || []);
+          setReservations(reservationData.reservations || []);
+          setResources(resourceData.resources || []);
         }
       } catch (err) {
         if (!cancelled) {
@@ -646,7 +669,7 @@ function Reservations() {
 
   return (
     <section>
-      <div className="page-heading">
+      <div className="page-header">
         <div>
           <h1>My Reservations</h1>
           <p>Manage your campus resource reservations.</p>
@@ -664,7 +687,12 @@ function Reservations() {
         </div>
       ) : (
         <div className="reservation-list">
-          {reservations.map((reservation) => (
+          {reservations.map((reservation) => {
+            const resource = resources.find(
+              (item) => item.id === reservation.resource_id
+            );
+
+            return (
             <article
               className="reservation-card"
               key={reservation.id}
@@ -675,7 +703,7 @@ function Reservations() {
                 </h2>
 
                 <p>
-                  Resource ID: {reservation.resource_id}
+                  Resource: {resource ? resource.name : `Resource #${reservation.resource_id}`}
                 </p>
 
                 <p>
@@ -688,7 +716,7 @@ function Reservations() {
                 </p>
 
                 {reservation.purpose && (
-                  <p>Purpose: {reservation.purpose}</p>
+                  <p>Purpose: {reservation.purpose.replace(/^Purpose:\s*/i, "")}</p>
                 )}
               </div>
 
@@ -720,7 +748,8 @@ function Reservations() {
                 )}
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
 

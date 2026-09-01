@@ -1,3 +1,4 @@
+import { apiRequest } from "./services/api";
 import { useEffect, useState } from "react";
 import "./App.css";
 import {
@@ -11,6 +12,9 @@ import {
   updateReservationStatus,
   getAdminCheckIns,
   getAdminUsers,
+  updateResource,
+  deleteResource,
+  updateResourceStatus,
 } from "./services/admin";
 
 function LoginScreen({ onLogin }) {
@@ -79,6 +83,10 @@ function AdminDashboard({ user, onLogout }) {
   const [resources, setResources] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
+  const [resourceModalOpen, setResourceModalOpen] = useState(false);
+  const [editingResource, setEditingResource] = useState(null);
+  const [resourceSaving, setResourceSaving] = useState(false);
+  const [resourceFormError, setResourceFormError] = useState("");
 
   const [reservations, setReservations] = useState([]);
   const [reservationsLoading, setReservationsLoading] = useState(false);
@@ -123,6 +131,116 @@ function AdminDashboard({ user, onLogout }) {
     loadResources();
   }, [activePage]);
 
+  async function handleDeleteResource(resourceId) {
+    if (!window.confirm("Delete this resource? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await deleteResource(resourceId);
+      setResources((current) =>
+        current.filter((resource) => resource.id !== resourceId)
+      );
+    } catch (err) {
+      setResourcesError(err.message);
+    }
+  }
+
+  async function handleToggleResourceStatus(resource) {
+    const nextStatus =
+      resource.status === "AVAILABLE" ? "UNAVAILABLE" : "AVAILABLE";
+
+    try {
+      await updateResourceStatus(resource.id, nextStatus);
+      setResources((current) =>
+        current.map((item) =>
+          item.id === resource.id
+            ? { ...item, status: nextStatus }
+            : item
+        )
+      );
+    } catch (err) {
+      setResourcesError(err.message);
+    }
+  }
+
+  function openCreateResourceModal() {
+    setEditingResource(null);
+    setResourceFormError("");
+    setResourceModalOpen(true);
+  }
+
+  function openEditResourceModal(resource) {
+    setEditingResource(resource);
+    setResourceFormError("");
+    setResourceModalOpen(true);
+  }
+
+  async function handleResourceSubmit(event) {
+    event.preventDefault();
+    setResourceFormError("");
+    setResourceSaving(true);
+
+    const formData = new FormData(event.currentTarget);
+
+    const updates = {
+      name: formData.get("name")?.trim(),
+      type: formData.get("type"),
+      description: formData.get("description")?.trim(),
+      location: formData.get("location")?.trim(),
+      capacity: Number(formData.get("capacity")),
+    };
+
+    if (
+      !updates.name ||
+      !updates.type ||
+      !updates.location ||
+      !Number.isInteger(updates.capacity) ||
+      updates.capacity < 1
+    ) {
+      setResourceFormError(
+        "Name, type, location and a positive capacity are required."
+      );
+      setResourceSaving(false);
+      return;
+    }
+
+    try {
+      if (editingResource) {
+        const data = await updateResource(editingResource.id, updates);
+
+        setResources((current) =>
+          current.map((resource) =>
+            resource.id === editingResource.id
+              ? data.resource
+              : resource
+          )
+        );
+      } else {
+        const data = await apiRequest("/resources", {
+          method: "POST",
+          body: JSON.stringify(updates),
+        });
+
+        setResources((current) => [...current, data.resource]);
+      }
+
+      closeResourceModal();
+    } catch (err) {
+      setResourceFormError(err.message);
+    } finally {
+      setResourceSaving(false);
+    }
+  }
+  function closeResourceModal() {
+    if (resourceSaving) {
+      return;
+    }
+
+    setResourceModalOpen(false);
+    setEditingResource(null);
+    setResourceFormError("");
+  }
   useEffect(() => {
     if (activePage !== "Reservations") {
       return;
@@ -193,7 +311,7 @@ function AdminDashboard({ user, onLogout }) {
     <div className="admin-app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-icon">CR</div>
+          <div className="brand-icon" aria-label="CampusReserve logo"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="8" width="32" height="32" rx="10" fill="none" stroke="currentColor" strokeWidth="3"/><path d="M18 30V18h7.5a6 6 0 0 1 0 12H18Zm0-7h7a2.5 2.5 0 0 0 0-5h-7v5Z" fill="currentColor"/><path d="M30 18h-2.5l-4 6 4 6H30l-4-6 4-6Z" fill="currentColor"/></svg></div>
           <div>
             <h2>CampusReserve</h2>
             <span>Admin Portal</span>
@@ -256,7 +374,7 @@ function AdminDashboard({ user, onLogout }) {
                 </p>
               </div>
 
-              <div className="welcome-icon">CR</div>
+              <div className="welcome-icon" aria-hidden="true"></div>
             </section>
 
             <section className="stats-grid">
@@ -294,6 +412,7 @@ function AdminDashboard({ user, onLogout }) {
                   </div>
 
                   <button
+                    className="btn-secondary"
                     type="button"
                     onClick={() => setActivePage("Reservations")}
                   >
@@ -354,6 +473,13 @@ function AdminDashboard({ user, onLogout }) {
                 <h2>Campus Resources</h2>
                 <p>Manage resources available for student reservations.</p>
               </div>
+
+              <button
+                className="primary-button"
+                onClick={openCreateResourceModal}
+              >
+                Add Resource
+              </button>
             </div>
 
             {resourcesLoading && (
@@ -392,7 +518,7 @@ function AdminDashboard({ user, onLogout }) {
                         </small>
                       </div>
 
-                      <div>
+                      <div className="resource-actions">
                         <span
                           className={
                             resource.status === "AVAILABLE"
@@ -402,6 +528,27 @@ function AdminDashboard({ user, onLogout }) {
                         >
                           {resource.status}
                         </span>
+
+                        <button
+                          type="button"
+                          onClick={() => openEditResourceModal(resource)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleResourceStatus(resource)}
+                        >
+                          {resource.status === "AVAILABLE" ? "Disable" : "Enable"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteResource(resource.id)}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))
@@ -519,6 +666,7 @@ function AdminDashboard({ user, onLogout }) {
                         {(reservation.status === "PENDING" ||
                           reservation.status === "CONFIRMED") && (
                           <button
+                            className="reservation-cancel"
                             type="button"
                             disabled={
                               updatingReservationId === reservation.id
@@ -703,6 +851,125 @@ function AdminDashboard({ user, onLogout }) {
             )}
           </section>
         )}
+      {resourceModalOpen && (
+        <div className="modal-overlay" onClick={closeResourceModal}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow">RESOURCE MANAGEMENT</span>
+                <h2>{editingResource ? "Edit Resource" : "Add Resource"}</h2>
+                <p>
+                  {editingResource
+                    ? "Update the details of this campus resource."
+                    : "Register a new resource for student reservations."}
+                </p>
+              </div>
+
+              <button
+                className="modal-close"
+                type="button"
+                onClick={closeResourceModal}
+                disabled={resourceSaving}
+                aria-label="Close modal"
+                title="Close"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M6 6l12 12M18 6L6 18"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleResourceSubmit}>
+              <div className="modal-body">
+                {resourceFormError && (
+                <div className="login-error">{resourceFormError}</div>
+              )}
+
+              <label>
+                Name
+                <input
+                  name="name"
+                  type="text"
+                  defaultValue={editingResource?.name || ""}
+                  placeholder="e.g. Computer Lab 3"
+                  required
+                />
+              </label>
+
+              <label>
+                Type
+                <select name="type" defaultValue={editingResource?.type || ""} required>
+                  <option value="">Select resource type</option>
+                  <option value="LABORATORY">Lab</option>
+                  <option value="STUDY_ROOM">Room</option>
+                  <option value="EQUIPMENT">Equipment</option>
+                </select>
+              </label>
+
+              <label>
+                Description
+                <textarea
+                  name="description"
+                  defaultValue={editingResource?.description || ""}
+                  placeholder="Describe this resource"
+                  rows="3"
+                />
+              </label>
+
+              <div className="modal-grid-row">
+                <label>
+                  Location
+                  <input
+                    name="location"
+                    type="text"
+                    defaultValue={editingResource?.location || ""}
+                    placeholder="e.g. Main Campus Block A"
+                    required
+                  />
+                </label>
+
+                <label>
+                  Capacity
+                  <input
+                    name="capacity"
+                    type="number"
+                    min="1"
+                    step="1"
+                    defaultValue={editingResource?.capacity || ""}
+                    required
+                  />
+                </label>
+              </div>
+              </div>
+
+              <div className="modal-actions modal-footer">
+                <button
+                  className="btn-cancel"
+                  type="button"
+                  onClick={closeResourceModal}
+                  disabled={resourceSaving}
+                >
+                  Cancel
+                </button>
+                <button className="btn-primary" type="submit" disabled={resourceSaving}>
+                  {resourceSaving
+                    ? "Saving..."
+                    : editingResource
+                    ? "Save Changes"
+                    : "Create Resource"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       </main>
     </div>
   );
@@ -742,4 +1009,3 @@ function App() {
 }
 
 export default App;
-
