@@ -38,3 +38,7 @@ export async function updateReservationStatus(reservationId, status) {
 export async function getAdminCheckIns() {
   return apiRequest("/admin/check-ins");
 }
+
+export async function getAdminUsers() {
+  return apiRequest("/admin/users");
+}

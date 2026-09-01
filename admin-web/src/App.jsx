@@ -9,10 +9,8 @@ import {
   getResources,
   getAdminReservations,
   updateReservationStatus,
-  updateResource,
-  deleteResource,
-  updateResourceStatus,
   getAdminCheckIns,
+  getAdminUsers,
 } from "./services/admin";
 
 function LoginScreen({ onLogin }) {
@@ -35,7 +33,6 @@ function LoginScreen({ onLogin }) {
       setLoading(false);
     }
   }
-
 
   return (
     <div className="login-page">
@@ -78,16 +75,23 @@ function LoginScreen({ onLogin }) {
 
 function AdminDashboard({ user, onLogout }) {
   const [activePage, setActivePage] = useState("Dashboard");
+
   const [resources, setResources] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
+
   const [reservations, setReservations] = useState([]);
   const [reservationsLoading, setReservationsLoading] = useState(false);
   const [reservationsError, setReservationsError] = useState("");
   const [updatingReservationId, setUpdatingReservationId] = useState(null);
+
   const [checkIns, setCheckIns] = useState([]);
   const [checkInsLoading, setCheckInsLoading] = useState(false);
   const [checkInsError, setCheckInsError] = useState("");
+
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState("");
 
   const menuItems = [
     "Dashboard",
@@ -161,6 +165,28 @@ function AdminDashboard({ user, onLogout }) {
     }
 
     loadCheckIns();
+  }, [activePage]);
+
+  useEffect(() => {
+    if (activePage !== "Users") {
+      return;
+    }
+
+    async function loadUsers() {
+      setUsersLoading(true);
+      setUsersError("");
+
+      try {
+        const data = await getAdminUsers();
+        setUsers(data.users || []);
+      } catch (err) {
+        setUsersError(err.message);
+      } finally {
+        setUsersLoading(false);
+      }
+    }
+
+    loadUsers();
   }, [activePage]);
 
   return (
@@ -339,9 +365,7 @@ function AdminDashboard({ user, onLogout }) {
             )}
 
             {resourcesError && (
-              <div className="login-error">
-                {resourcesError}
-              </div>
+              <div className="login-error">{resourcesError}</div>
             )}
 
             {!resourcesLoading && !resourcesError && (
@@ -358,9 +382,12 @@ function AdminDashboard({ user, onLogout }) {
                       <div>
                         <span className="eyebrow">{resource.type}</span>
                         <h3>{resource.name}</h3>
-                        <p>{resource.description || "No description provided."}</p>
+                        <p>
+                          {resource.description ||
+                            "No description provided."}
+                        </p>
                         <small>
-                          Location: {resource.location}  Capacity:{" "}
+                          Location: {resource.location} Capacity:{" "}
                           {resource.capacity}
                         </small>
                       </div>
@@ -402,9 +429,7 @@ function AdminDashboard({ user, onLogout }) {
             )}
 
             {reservationsError && (
-              <div className="login-error">
-                {reservationsError}
-              </div>
+              <div className="login-error">{reservationsError}</div>
             )}
 
             {!reservationsLoading && !reservationsError && (
@@ -413,7 +438,9 @@ function AdminDashboard({ user, onLogout }) {
                   <div className="placeholder-panel">
                     <div className="placeholder-icon">CR</div>
                     <h2>No reservations found</h2>
-                    <p>There are currently no reservations in the system.</p>
+                    <p>
+                      There are currently no reservations in the system.
+                    </p>
                   </div>
                 ) : (
                   reservations.map((reservation) => (
@@ -428,12 +455,12 @@ function AdminDashboard({ user, onLogout }) {
                         <p>
                           User #{reservation.user_id}
                           {reservation.purpose
-                            ? `  ${reservation.purpose}`
+                            ? ` ${reservation.purpose}`
                             : ""}
                         </p>
 
                         <small>
-                          Date: {reservation.reservation_date}  Time:{" "}
+                          Date: {reservation.reservation_date} Time:{" "}
                           {reservation.start_time} - {reservation.end_time}
                         </small>
                       </div>
@@ -454,7 +481,9 @@ function AdminDashboard({ user, onLogout }) {
                         {reservation.status === "PENDING" && (
                           <button
                             type="button"
-                            disabled={updatingReservationId === reservation.id}
+                            disabled={
+                              updatingReservationId === reservation.id
+                            }
                             onClick={async () => {
                               setUpdatingReservationId(reservation.id);
 
@@ -467,7 +496,10 @@ function AdminDashboard({ user, onLogout }) {
                                 setReservations((current) =>
                                   current.map((item) =>
                                     item.id === reservation.id
-                                      ? { ...item, status: "CONFIRMED" }
+                                      ? {
+                                          ...item,
+                                          status: "CONFIRMED",
+                                        }
                                       : item
                                   )
                                 );
@@ -488,7 +520,9 @@ function AdminDashboard({ user, onLogout }) {
                           reservation.status === "CONFIRMED") && (
                           <button
                             type="button"
-                            disabled={updatingReservationId === reservation.id}
+                            disabled={
+                              updatingReservationId === reservation.id
+                            }
                             onClick={async () => {
                               setUpdatingReservationId(reservation.id);
 
@@ -501,7 +535,10 @@ function AdminDashboard({ user, onLogout }) {
                                 setReservations((current) =>
                                   current.map((item) =>
                                     item.id === reservation.id
-                                      ? { ...item, status: "CANCELLED" }
+                                      ? {
+                                          ...item,
+                                          status: "CANCELLED",
+                                        }
                                       : item
                                   )
                                 );
@@ -544,9 +581,7 @@ function AdminDashboard({ user, onLogout }) {
             )}
 
             {checkInsError && (
-              <div className="login-error">
-                {checkInsError}
-              </div>
+              <div className="login-error">{checkInsError}</div>
             )}
 
             {!checkInsLoading && !checkInsError && (
@@ -555,7 +590,9 @@ function AdminDashboard({ user, onLogout }) {
                   <div className="placeholder-panel">
                     <div className="placeholder-icon">CR</div>
                     <h2>No check-ins found</h2>
-                    <p>There are currently no check-in records in the system.</p>
+                    <p>
+                      There are currently no check-in records in the system.
+                    </p>
                   </div>
                 ) : (
                   checkIns.map((checkIn) => (
@@ -572,7 +609,9 @@ function AdminDashboard({ user, onLogout }) {
                         <small>
                           Checked in:{" "}
                           {checkIn.checked_in_at
-                            ? new Date(checkIn.checked_in_at).toLocaleString()
+                            ? new Date(
+                                checkIn.checked_in_at
+                              ).toLocaleString()
                             : "Not checked in"}
                         </small>
                       </div>
@@ -597,10 +636,71 @@ function AdminDashboard({ user, onLogout }) {
         )}
 
         {activePage === "Users" && (
-          <section className="placeholder-panel">
-            <div className="placeholder-icon">CR</div>
-            <h2>Users</h2>
-            <p>This module is ready for integration with the Flask API.</p>
+          <section className="resources-page">
+            <div className="page-section-header">
+              <div>
+                <h2>Users</h2>
+                <p>Manage registered students and administrators.</p>
+              </div>
+            </div>
+
+            {usersLoading && (
+              <div className="placeholder-panel">
+                <div className="placeholder-icon">CR</div>
+                <h2>Loading users...</h2>
+                <p>Please wait while users are retrieved.</p>
+              </div>
+            )}
+
+            {usersError && (
+              <div className="login-error">{usersError}</div>
+            )}
+
+            {!usersLoading && !usersError && (
+              <div className="resource-list">
+                {users.length === 0 ? (
+                  <div className="placeholder-panel">
+                    <div className="placeholder-icon">CR</div>
+                    <h2>No users found</h2>
+                    <p>
+                      There are currently no registered users in the system.
+                    </p>
+                  </div>
+                ) : (
+                  users.map((account) => (
+                    <div className="resource-card" key={account.id}>
+                      <div>
+                        <span className="eyebrow">
+                          USER #{account.id}
+                        </span>
+
+                        <h3>{account.name}</h3>
+
+                        <p>{account.email}</p>
+
+                        <small>
+                          Student ID:{" "}
+                          {account.student_id || "Not assigned"}{" "}
+                          Role: {account.role}
+                        </small>
+                      </div>
+
+                      <div>
+                        <span
+                          className={
+                            account.role === "ADMIN"
+                              ? "status confirmed"
+                              : "status"
+                          }
+                        >
+                          {account.role}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </section>
         )}
       </main>
@@ -610,6 +710,7 @@ function AdminDashboard({ user, onLogout }) {
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(isAdminLoggedIn());
+
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("adminUser");
 
@@ -641,10 +742,4 @@ function App() {
 }
 
 export default App;
-
-
-
-
-
-
 
