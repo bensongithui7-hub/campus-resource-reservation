@@ -166,28 +166,109 @@ textarea {
   padding: 0 5%;
 }
 
-.topbar strong {
-  display: block;
-  font-size: 18px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 1.3;
+  padding: 0.15rem 0;
 }
 
-.topbar span {
+.brand .brand-icon {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.brand .brand-icon svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.3;
+}
+
+.brand-text strong {
+  display: block;
+  color: #172033;
+  font-size: 19px;
+  font-weight: 750;
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+}
+
+.brand-text span {
   display: block;
   color: #7a8493;
   font-size: 13px;
-  margin-top: 3px;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-top: 0;
 }
 
 .user-area {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
 }
 
-.user-area span {
+.user-area .user-badge,
+.user-area .user-name {
+  background: #f8fafc;
+}
+
+.user-area .user-badge {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e2e8f0;
+  border-right: 0;
+  border-radius: 20px 0 0 20px;
+  margin-right: -10px;
+}
+
+.user-area .user-name {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 0.8rem 0 0.45rem;
+  border: 1px solid #e2e8f0;
+  border-left: 0;
+  border-radius: 0 20px 20px 0;
+}
+
+.user-badge {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef1f5;
+  color: #172033;
+  flex: 0 0 auto;
+}
+
+.user-badge svg {
+  width: 18px;
+  height: 18px;
+}
+
+.user-area .user-name {
   color: #172033;
   margin: 0;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .user-area button {
@@ -229,25 +310,56 @@ textarea {
 .welcome-card {
   background: white;
   border-radius: 18px;
-  padding: 40px;
-  margin-bottom: 28px;
+  padding: 48px 32px;
+  margin-bottom: 32px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .welcome-card p:first-child {
-  color: #778293;
-  margin-bottom: 5px;
+  width: 100%;
+  text-align: center;
+  margin: 0 0 0.75rem;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #475569;
 }
 
 .welcome-card h1 {
-  margin: 0 0 12px;
-  font-size: 36px;
+  width: 100%;
+  text-align: center;
+  margin: 0 0 1rem 0;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
 }
 
-.welcome-card p {
-  max-width: 650px;
-  color: #667085;
+.welcome-card p:not(:first-child) {
+  width: 100%;
+  text-align: center;
+  max-width: 580px;
+  margin: 0 auto 1.75rem auto;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 1.05rem;
+  color: #64748b;
   line-height: 1.6;
+}
+
+.welcome-card button,
+.welcome-card .primary-button {
+  margin-top: 0.5rem;
 }
 
 .dashboard-cards,
@@ -265,6 +377,15 @@ textarea {
   border-radius: 15px;
   padding: 24px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04);
+}
+
+.quick-action {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.quick-action:hover {
+  transform: translateY(-3px);
 }
 
 .card-icon svg {
@@ -307,7 +428,7 @@ textarea {
 
 .page-header h1 {
   margin: 0 0 0.5rem;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .page-header p {
@@ -316,7 +437,8 @@ textarea {
 }
 
 .page-heading h1 {
-  margin: 0 0 5px;
+  margin: 0 0 0.5rem;
+  line-height: 1.3;
 }
 
 .page-heading p {
@@ -418,7 +540,7 @@ textarea {
 
 .modal {
   width: min(500px, 100%);
-  max-height: 80vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -430,7 +552,7 @@ textarea {
 
 .modal-body {
   overflow-y: auto;
-  max-height: calc(80vh - 120px);
+  max-height: calc(85vh - 120px);
   padding: 30px 30px 1.5rem;
 }
 

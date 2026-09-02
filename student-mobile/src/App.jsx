@@ -198,14 +198,28 @@ function StudentApp({ user, page, setPage, onLogout }) {
   return (
     <div className="student-app">
       <header className="topbar">
-        <div>
-          <strong>Campus Resources</strong>
-          <span>Student Portal</span>
+        <div className="brand">
+          <span className="brand-icon" aria-label="CampusReserve logo">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <rect x="8" y="8" width="32" height="32" rx="10" fill="none" stroke="currentColor" strokeWidth="3"/>
+              <path d="M18 30V18h7.5a6 6 0 0 1 0 12H18Zm0-7h7a2.5 2.5 0 0 0 0-5h-7v5Z" fill="currentColor"/>
+              <path d="M30 18h-2.5l-4 6 4 6H30l-4-6 4-6Z" fill="currentColor"/>
+            </svg>
+          </span>
+          <div className="brand-text">
+            <strong>CampusReserve</strong>
+            <span>Student Portal</span>
+          </div>
         </div>
 
         <div className="user-area">
-          <span>{user.name}</span>
-
+          <span className="user-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <circle cx="12" cy="8" r="3.2"/>
+              <path d="M5.5 20c.8-3.5 3-5.2 6.5-5.2s5.7 1.7 6.5 5.2"/>
+            </svg>
+          </span>
+          <span className="user-name">{user.name}</span>
           <button onClick={onLogout}>
             Logout
           </button>
@@ -273,7 +287,7 @@ function Dashboard({ user, setPage }) {
       </div>
 
       <div className="dashboard-cards">
-        <div className="info-card">
+        <div className="info-card quick-action" role="button" tabIndex="0" onClick={() => setPage("resources")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setPage("resources"); }}>
           <span className="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
           <h3>Resources</h3>
           <p>
@@ -281,7 +295,7 @@ function Dashboard({ user, setPage }) {
           </p>
         </div>
 
-        <div className="info-card">
+        <div className="info-card quick-action" role="button" tabIndex="0" onClick={() => setPage("reservations")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setPage("reservations"); }}>
           <span className="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M8 14h3M13 14h3M8 17h3"/></svg></span>
           <h3>Reservations</h3>
           <p>
@@ -289,7 +303,7 @@ function Dashboard({ user, setPage }) {
           </p>
         </div>
 
-        <div className="info-card">
+        <div className="info-card quick-action" role="button" tabIndex="0" onClick={() => setPage("reservations")} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setPage("reservations"); }}>
           <span className="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h3M8 15h8"/><path d="M15 11h1"/></svg></span>
           <h3>Check-in</h3>
           <p>
