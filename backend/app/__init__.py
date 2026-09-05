@@ -9,9 +9,12 @@ db = SQLAlchemy()
 jwt = JWTManager()
 
 
-def create_app():
+def create_app(test_config=None):
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    if test_config:
+        app.config.update(test_config)
 
     db.init_app(app)
     jwt.init_app(app)
@@ -33,7 +36,7 @@ def create_app():
     app.register_blueprint(reservation_bp, url_prefix="/api")
 
     from app.routes.check_in import check_in_bp
-    app.register_blueprint(check_in_bp, url_prefix="/api") 
+    app.register_blueprint(check_in_bp, url_prefix="/api")
 
     from app.routes.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix="/api")
