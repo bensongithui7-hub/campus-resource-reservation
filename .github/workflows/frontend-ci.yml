@@ -1,0 +1,56 @@
+name: Frontend CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  admin-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: admin-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: admin-web
+        run: npm ci
+
+      - name: Lint
+        working-directory: admin-web
+        run: npm run lint
+
+      - name: Build
+        working-directory: admin-web
+        run: npm run build
+
+  student-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: student-mobile/package-lock.json
+
+      - name: Install dependencies
+        working-directory: student-mobile
+        run: npm ci
+
+      - name: Lint
+        working-directory: student-mobile
+        run: npm run lint
+
+      - name: Build
+        working-directory: student-mobile
+        run: npm run build
