@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -125,7 +125,7 @@ def perform_check_in(qr_token):
         }), 400
 
     check_in.status = "CHECKED_IN"
-    check_in.checked_in_at = datetime.utcnow()
+    check_in.checked_in_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     db.session.commit()
 
