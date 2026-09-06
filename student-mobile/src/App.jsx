@@ -567,6 +567,9 @@ function ReservationModal({ resource, onClose }) {
         </div>
 
         <div className="modal-footer">
+          {error && <div className="alert error">{error}</div>}
+          {message && <div className="alert success">{message}</div>}
+          
           <button
             className="primary-button"
             type="submit"
