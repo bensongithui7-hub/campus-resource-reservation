@@ -1,5 +1,3 @@
-USE campus_reservation;
-
 INSERT INTO resources
 (name, type, description, location, capacity, status)
 VALUES

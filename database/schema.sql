@@ -1,8 +1,4 @@
-CREATE DATABASE IF NOT EXISTS campus_reservation;
-
-USE campus_reservation;
-
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     student_id VARCHAR(50) UNIQUE,
@@ -12,7 +8,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE resources (
+CREATE TABLE IF NOT EXISTS resources (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     type ENUM('LABORATORY', 'STUDY_ROOM', 'EQUIPMENT') NOT NULL,
@@ -23,7 +19,7 @@ CREATE TABLE resources (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE reservations (
+CREATE TABLE IF NOT EXISTS reservations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     resource_id INT NOT NULL,
@@ -39,7 +35,7 @@ CREATE TABLE reservations (
     FOREIGN KEY (resource_id) REFERENCES resources(id)
 );
 
-CREATE TABLE check_ins (
+CREATE TABLE IF NOT EXISTS check_ins (
     id INT AUTO_INCREMENT PRIMARY KEY,
     reservation_id INT NOT NULL UNIQUE,
     qr_token VARCHAR(255) NOT NULL UNIQUE,
