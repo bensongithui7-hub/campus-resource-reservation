@@ -18,7 +18,13 @@ def create_app(test_config=None):
 
     db.init_app(app)
     jwt.init_app(app)
-    CORS(app)
+    CORS(
+        app,
+        origins=[
+            "https://campus-resource-reservation.vercel.app",
+            "https://campus-resource-reservation-2vz5.vercel.app",
+        ],
+    )
 
     from app.routes.health import health_bp
     app.register_blueprint(health_bp, url_prefix="/api")
