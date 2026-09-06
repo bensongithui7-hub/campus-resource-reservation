@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 load_dotenv()
 
@@ -10,9 +11,19 @@ class Config:
 
     DATABASE_URL = os.getenv("DATABASE_URL")
 
-    if DATABASE_URL and DATABASE_URL.startswith("mysql://"):
-        DATABASE_URL = DATABASE_URL.replace(
-            "mysql://", "mysql+pymysql://", 1
+    if DATABASE_URL:
+        if DATABASE_URL.startswith("mysql://"):
+            DATABASE_URL = DATABASE_URL.replace(
+                "mysql://", "mysql+pymysql://", 1
+            )
+
+        parsed = urlparse(DATABASE_URL)
+        query = dict(parse_qsl(parsed.query))
+
+        query.pop("ssl-mode", None)
+
+        DATABASE_URL = urlunparse(
+            parsed._replace(query=urlencode(query))
         )
 
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
