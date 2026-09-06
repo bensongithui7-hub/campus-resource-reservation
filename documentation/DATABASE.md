@@ -1,1578 +1,1250 @@
-\# CampusReserve Database Design
+# CampusReserve Database Design
 
+## 1. Overview
 
-
-\## 1. Overview
-
-
-
-CampusReserve uses a relational MySQL database named `campus\_reservation`.
-
-
-
-The database stores the core information required to operate the campus facility and lab equipment reservation system.
-
-
+CampusReserve uses a relational MySQL database to store the persistent data required by the campus facility and lab equipment reservation system.
 
 The database contains four primary tables:
 
+1. `users`
+2. `resources`
+3. `reservations`
+4. `check_ins`
 
+These tables support:
 
-1\. `users`
+* User authentication and authorization
+* Resource management
+* Reservation management
+* Reservation cancellation
+* Reservation check-in
+* QR/token-based check-in
 
-2\. `resources`
+The Flask backend is the only application component that communicates directly with the database.
 
-3\. `reservations`
+The React frontend applications communicate with the Flask REST API and never connect directly to MySQL.
 
-4\. `check\_ins`
+---
 
+# 2. Database Technology
 
+CampusReserve uses MySQL as its relational database management system.
 
-The relationships between these tables support user authentication, resource management, reservations, and reservation check-in.
+The production database is hosted on **Aiven**.
 
-
-
-\---
-
-
-
-\## 2. Database Technology
-
-
-
-The database technology is:
-
-
-
-\* MySQL Community Server 8.0.46
-
-\* Database name: `campus\_reservation`
-
-
-
-The Flask backend communicates with the database through SQLAlchemy and PyMySQL.
-
-
-
-The frontend applications do not connect directly to the database.
-
-
-
-\---
-
-
-
-\# 3. Entity Relationship Diagram
-
-
-
-The logical relationship between the four entities is:
-
-
+The production environment uses:
 
 ```text
-
-+----------------------+
-
-|        USERS         |
-
-+----------------------+
-
-| PK id                |
-
-|    name              |
-
-|    student\_id        |
-
-|    email             |
-
-|    password\_hash     |
-
-|    role              |
-
-|    created\_at        |
-
-+----------+-----------+
-
-&#x20;          |
-
-&#x20;          | 1
-
-&#x20;          |
-
-&#x20;          | many
-
-&#x20;          v
-
-+----------------------+       +----------------------+
-
-|    RESERVATIONS      |       |      RESOURCES       |
-
-+----------------------+       +----------------------+
-
-| PK id                |       | PK id                |
-
-| FK user\_id           |       |    name              |
-
-| FK resource\_id       |-------|    type              |
-
-|    reservation\_date  | many  |    description       |
-
-|    start\_time        |   1   |    location          |
-
-|    end\_time          |       |    capacity          |
-
-|    purpose           |       |    status            |
-
-|    status            |       |    created\_at        |
-
-|    created\_at        |       +----------------------+
-
-+----------+-----------+
-
-&#x20;          |
-
-&#x20;          | 1
-
-&#x20;          |
-
-&#x20;          | 0..1
-
-&#x20;          v
-
-+----------------------+
-
-|      CHECK\_INS       |
-
-+----------------------+
-
-| PK id                |
-
-| FK reservation\_id    |
-
-|    qr\_token          |
-
-|    checked\_in\_at     |
-
-|    status            |
-
-+----------------------+
-
+Aiven MySQL
 ```
 
+The local development environment uses:
+
+```text
+MySQL Community Server 8.0.46
+```
+
+The production database server currently uses MySQL 8.4.
+
+The Flask backend communicates with MySQL through:
+
+* Flask-SQLAlchemy
+* SQLAlchemy
+* PyMySQL
+
+The database connection is configured through the backend environment variable:
+
+```text
+DATABASE_URL
+```
+
+Database credentials are not exposed to the frontend applications.
+
+---
+
+# 3. Database Architecture
+
+The database is positioned behind the Flask backend.
+
+The production data flow is:
+
+```text
++-----------------------+
+| Student Frontend      |
+| React + Vite / Vercel |
++-----------+-----------+
+            |
+            | HTTPS / JSON
+            v
++-----------------------+
+| Administrator         |
+| Frontend              |
+| React + Vite / Vercel |
++-----------+-----------+
+            |
+            |
+            v
++-----------------------+
+| Flask REST API        |
+| Render                |
++-----------+-----------+
+            |
+            | SQL / SSL
+            v
++-----------------------+
+| MySQL Database        |
+| Aiven                 |
++-----------------------+
+```
+
+The frontend applications do not have direct database access.
+
+All database operations pass through the backend API.
+
+---
+
+# 4. Database Name
+
+The application database is logically identified as:
+
+```text
+campus_reservation
+```
+
+The local development database uses:
+
+```text
+campus_reservation
+```
+
+The production Aiven MySQL service uses the Aiven-provided database environment and connection configuration.
+
+The application does not rely on frontend code to select or access the database.
+
+---
+
+# 5. Entity Relationship Overview
+
+CampusReserve contains four primary entities:
+
+```text
++----------------------+
+|        USERS         |
++----------+-----------+
+           |
+           | 1
+           |
+           | many
+           v
++----------------------+
+|    RESERVATIONS      |
++----------+-----------+
+           |
+           | many
+           |
+           | 1
+           v
++----------------------+
+|      RESOURCES       |
++----------------------+
 
 
-\---
++----------------------+
+|    RESERVATIONS      |
++----------+-----------+
+           |
+           | 1
+           |
+           | 0..1
+           v
++----------------------+
+|      CHECK_INS       |
++----------------------+
+```
 
+The principal relationships are:
 
+```text
+USERS       1 ---- many ---- RESERVATIONS
 
-\# 4. Users Table
+RESOURCES   1 ---- many ---- RESERVATIONS
 
+RESERVATIONS 1 ---- 0..1 ---- CHECK_INS
+```
 
+The `reservations` table is the central transactional entity connecting users and resources.
+
+---
+
+# 6. Users Table
 
 Table name:
 
-
-
 ```text
-
 users
-
 ```
-
-
 
 The `users` table stores student and administrator accounts.
 
-
-
-\## 4.1 Columns
-
-
+## 6.1 Columns
 
 | Column          | Type         | Constraints                 | Description            |
-
 | --------------- | ------------ | --------------------------- | ---------------------- |
-
 | `id`            | INT          | Primary Key, Auto Increment | Unique user identifier |
-
 | `name`          | VARCHAR(100) | NOT NULL                    | User's name            |
-
-| `student\_id`    | VARCHAR(50)  | UNIQUE                      | Student identifier     |
-
+| `student_id`    | VARCHAR(50)  | UNIQUE                      | Student identifier     |
 | `email`         | VARCHAR(120) | NOT NULL, UNIQUE            | User email address     |
-
-| `password\_hash` | VARCHAR(255) | NOT NULL                    | Stored password hash   |
-
+| `password_hash` | VARCHAR(255) | NOT NULL                    | Stored password hash   |
 | `role`          | ENUM         | NOT NULL, Default `STUDENT` | User role              |
+| `created_at`    | TIMESTAMP    | Default current timestamp   | Account creation time  |
 
-| `created\_at`    | TIMESTAMP    | Default current timestamp   | Account creation time  |
-
-
-
-\## 4.2 Role Values
-
-
+## 6.2 Role Values
 
 The `role` column supports:
 
-
-
 ```text
-
 STUDENT
-
 ADMIN
-
 ```
 
-
-
-The default role for a newly created account is:
-
-
+Newly registered accounts use:
 
 ```text
-
 STUDENT
-
 ```
 
+unless an authorized administrative process establishes an administrator account.
 
-
-\## 4.3 Constraints
-
-
+## 6.3 Constraints
 
 The table enforces:
 
+* `id` as the primary key
+* Unique student IDs
+* Unique email addresses
+* Non-null names
+* Non-null email addresses
+* Non-null password hashes
+* Valid role values
 
+Passwords are stored as password hashes rather than plaintext passwords.
 
-\* `id` as the primary key.
+---
 
-\* Unique student IDs.
-
-\* Unique email addresses.
-
-\* Non-null name.
-
-\* Non-null email.
-
-\* Non-null password hash.
-
-\* A valid role value.
-
-
-
-\---
-
-
-
-\# 5. Resources Table
-
-
+# 7. Resources Table
 
 Table name:
 
-
-
 ```text
-
 resources
-
 ```
-
-
 
 The `resources` table stores campus facilities and equipment that can be reserved.
 
-
-
-\## 5.1 Columns
-
-
+## 7.1 Columns
 
 | Column        | Type         | Constraints                   | Description                |
-
 | ------------- | ------------ | ----------------------------- | -------------------------- |
-
 | `id`          | INT          | Primary Key, Auto Increment   | Unique resource identifier |
-
 | `name`        | VARCHAR(100) | NOT NULL                      | Resource name              |
-
 | `type`        | ENUM         | NOT NULL                      | Resource category          |
-
 | `description` | TEXT         | Optional                      | Resource description       |
-
 | `location`    | VARCHAR(150) | NOT NULL                      | Physical location          |
-
 | `capacity`    | INT          | Default `1`                   | Resource capacity          |
-
 | `status`      | ENUM         | NOT NULL, Default `AVAILABLE` | Resource availability      |
+| `created_at`  | TIMESTAMP    | Default current timestamp     | Creation time              |
 
-| `created\_at`  | TIMESTAMP    | Default current timestamp     | Creation time              |
-
-
-
-\## 5.2 Resource Types
-
-
+## 7.2 Resource Types
 
 The `type` column supports:
 
-
-
 ```text
-
 LABORATORY
-
-STUDY\_ROOM
-
+STUDY_ROOM
 EQUIPMENT
-
 ```
 
-
-
-\## 5.3 Resource Status
-
-
+## 7.3 Resource Status
 
 The `status` column supports:
 
-
-
 ```text
-
 AVAILABLE
-
 UNAVAILABLE
-
 ```
-
-
 
 The default status is:
 
-
-
 ```text
-
 AVAILABLE
-
 ```
 
+---
 
-
-\---
-
-
-
-\# 6. Reservations Table
-
-
+# 8. Reservations Table
 
 Table name:
 
-
-
 ```text
-
 reservations
-
 ```
-
-
 
 The `reservations` table records bookings made by users against resources.
 
-
-
-\## 6.1 Columns
-
-
+## 8.1 Columns
 
 | Column             | Type         | Constraints                 | Description                   |
-
 | ------------------ | ------------ | --------------------------- | ----------------------------- |
-
 | `id`               | INT          | Primary Key, Auto Increment | Unique reservation identifier |
-
-| `user\_id`          | INT          | NOT NULL, Foreign Key       | User who made the reservation |
-
-| `resource\_id`      | INT          | NOT NULL, Foreign Key       | Reserved resource             |
-
-| `reservation\_date` | DATE         | NOT NULL                    | Reservation date              |
-
-| `start\_time`       | TIME         | NOT NULL                    | Reservation start time        |
-
-| `end\_time`         | TIME         | NOT NULL                    | Reservation end time          |
-
+| `user_id`          | INT          | NOT NULL, Foreign Key       | User who made the reservation |
+| `resource_id`      | INT          | NOT NULL, Foreign Key       | Reserved resource             |
+| `reservation_date` | DATE         | NOT NULL                    | Reservation date              |
+| `start_time`       | TIME         | NOT NULL                    | Reservation start time        |
+| `end_time`         | TIME         | NOT NULL                    | Reservation end time          |
 | `purpose`          | VARCHAR(255) | Optional                    | Reservation purpose           |
-
 | `status`           | ENUM         | NOT NULL                    | Reservation state             |
+| `created_at`       | TIMESTAMP    | Default current timestamp   | Reservation creation time     |
 
-| `created\_at`       | TIMESTAMP    | Default current timestamp   | Reservation creation time     |
-
-
-
-\## 6.2 Reservation Status
-
-
+## 8.2 Reservation Status
 
 The `status` column supports:
 
-
-
 ```text
-
 PENDING
-
 CONFIRMED
-
 CANCELLED
-
 COMPLETED
-
 ```
-
-
 
 The database default is:
 
-
-
 ```text
-
 CONFIRMED
-
 ```
 
+The application may update the status through the appropriate reservation or administrative workflow.
 
+---
 
-\---
-
-
-
-\# 7. Check-ins Table
-
-
+# 9. Check-ins Table
 
 Table name:
 
-
-
 ```text
-
-check\_ins
-
+check_ins
 ```
 
+The `check_ins` table stores check-in information associated with reservations.
 
-
-The `check\_ins` table stores check-in information associated with reservations.
-
-
-
-\## 7.1 Columns
-
-
+## 9.1 Columns
 
 | Column           | Type         | Constraints                   | Description                |
-
 | ---------------- | ------------ | ----------------------------- | -------------------------- |
-
 | `id`             | INT          | Primary Key, Auto Increment   | Unique check-in identifier |
-
-| `reservation\_id` | INT          | NOT NULL, UNIQUE, Foreign Key | Associated reservation     |
-
-| `qr\_token`       | VARCHAR(255) | NOT NULL, UNIQUE              | Check-in token             |
-
-| `checked\_in\_at`  | TIMESTAMP    | Nullable                      | Check-in timestamp         |
-
+| `reservation_id` | INT          | NOT NULL, UNIQUE, Foreign Key | Associated reservation     |
+| `qr_token`       | VARCHAR(255) | NOT NULL, UNIQUE              | Check-in token             |
+| `checked_in_at`  | TIMESTAMP    | Nullable                      | Check-in timestamp         |
 | `status`         | ENUM         | NOT NULL                      | Check-in state             |
 
-
-
-\## 7.2 Check-in Status
-
-
+## 9.2 Check-in Status
 
 The `status` column supports:
 
-
-
 ```text
-
-NOT\_CHECKED\_IN
-
-CHECKED\_IN
-
+NOT_CHECKED_IN
+CHECKED_IN
 ```
-
-
 
 The default status is:
 
-
-
 ```text
-
-NOT\_CHECKED\_IN
-
+NOT_CHECKED_IN
 ```
 
+---
 
-
-\---
-
-
-
-\# 8. Primary Keys
-
-
+# 10. Primary Keys
 
 Each table has an auto-incrementing integer primary key.
 
-
-
 ```text
-
 users.id
-
 resources.id
-
 reservations.id
-
-check\_ins.id
-
+check_ins.id
 ```
-
-
 
 Primary keys uniquely identify individual records.
 
+---
 
+# 11. Foreign Keys
 
-\---
+The database defines three primary foreign-key relationships.
 
-
-
-\# 9. Foreign Keys
-
-
-
-The database defines three foreign-key relationships.
-
-
-
-\## 9.1 User to Reservation
-
-
+## 11.1 User to Reservation
 
 ```text
-
-reservations.user\_id
-
-&#x20;       |
-
-&#x20;       v
-
+reservations.user_id
+        |
+        v
 users.id
-
 ```
-
-
 
 This identifies the user who created a reservation.
 
+Relationship:
 
+```text
+USERS 1 ---- many RESERVATIONS
+```
 
 A user can have multiple reservations.
 
+---
 
-
-Relationship:
-
-
+## 11.2 Resource to Reservation
 
 ```text
-
-USERS 1 ---- many RESERVATIONS
-
-```
-
-
-
-\---
-
-
-
-\## 9.2 Resource to Reservation
-
-
-
-```text
-
-reservations.resource\_id
-
-&#x20;       |
-
-&#x20;       v
-
+reservations.resource_id
+        |
+        v
 resources.id
-
 ```
-
-
 
 This identifies the resource being reserved.
 
+Relationship:
 
+```text
+RESOURCES 1 ---- many RESERVATIONS
+```
 
 A resource can be associated with multiple reservations over time.
 
+---
 
-
-Relationship:
-
-
+## 11.3 Reservation to Check-in
 
 ```text
-
-RESOURCES 1 ---- many RESERVATIONS
-
-```
-
-
-
-\---
-
-
-
-\## 9.3 Reservation to Check-in
-
-
-
-```text
-
-check\_ins.reservation\_id
-
-&#x20;       |
-
-&#x20;       v
-
+check_ins.reservation_id
+        |
+        v
 reservations.id
-
 ```
-
-
 
 This identifies the reservation associated with a check-in.
 
-
-
-The `reservation\_id` column in `check\_ins` is also declared `UNIQUE`.
-
-
-
-Therefore, the database structure allows at most one check-in record for each reservation.
-
-
+Because `reservation_id` is unique in the `check_ins` table, a reservation can have at most one check-in record.
 
 Relationship:
 
-
-
 ```text
-
-RESERVATIONS 1 ---- 0..1 CHECK\_INS
-
+RESERVATIONS 1 ---- 0..1 CHECK_INS
 ```
 
+---
 
-
-\---
-
-
-
-\# 10. Referential Integrity
-
-
+# 12. Referential Integrity
 
 Foreign keys maintain relationships between related records.
 
+The `reservations` table defines:
 
-
-The database defines:
-
-
-
-```text
-
-FOREIGN KEY (user\_id) REFERENCES users(id)
-
+```sql
+FOREIGN KEY (user_id) REFERENCES users(id)
 ```
 
+The `reservations` table also defines:
 
-
-in the `reservations` table.
-
-
-
-It also defines:
-
-
-
-```text
-
-FOREIGN KEY (resource\_id) REFERENCES resources(id)
-
+```sql
+FOREIGN KEY (resource_id) REFERENCES resources(id)
 ```
 
+The `check_ins` table defines:
 
-
-in the `reservations` table.
-
-
-
-The `check\_ins` table defines:
-
-
-
-```text
-
-FOREIGN KEY (reservation\_id) REFERENCES reservations(id)
-
+```sql
+FOREIGN KEY (reservation_id) REFERENCES reservations(id)
 ```
 
+These constraints ensure that related records reference existing parent records.
 
+They help prevent orphaned reservations and check-in records.
 
-These constraints help prevent orphaned related records.
+---
 
+# 13. Uniqueness Constraints
 
+The database uses unique constraints where duplicate values are not permitted.
 
-\---
-
-
-
-\# 11. Uniqueness Constraints
-
-
-
-The database uses unique constraints to prevent duplicate values where uniqueness is required.
-
-
-
-\## Users
-
-
+## Users
 
 ```text
-
-student\_id UNIQUE
-
+student_id UNIQUE
 email UNIQUE
-
 ```
 
-
-
-\## Check-ins
-
-
+## Check-ins
 
 ```text
-
-reservation\_id UNIQUE
-
-qr\_token UNIQUE
-
+reservation_id UNIQUE
+qr_token UNIQUE
 ```
 
+The unique `reservation_id` constraint ensures that a reservation cannot have multiple check-in records.
 
+The unique `qr_token` constraint prevents duplicate check-in tokens.
 
-These constraints support account integrity and duplicate check-in prevention.
+---
 
+# 14. Enumerated Values
 
+The database uses MySQL `ENUM` fields for controlled state and category values.
 
-\---
-
-
-
-\# 12. Enumerated Values
-
-
-
-The database uses MySQL `ENUM` fields for controlled state values.
-
-
-
-\### User roles
-
-
+## User roles
 
 ```text
-
 STUDENT
-
 ADMIN
-
 ```
 
-
-
-\### Resource types
-
-
+## Resource types
 
 ```text
-
 LABORATORY
-
-STUDY\_ROOM
-
+STUDY_ROOM
 EQUIPMENT
-
 ```
 
-
-
-\### Resource statuses
-
-
+## Resource statuses
 
 ```text
-
 AVAILABLE
-
 UNAVAILABLE
-
 ```
 
-
-
-\### Reservation statuses
-
-
+## Reservation statuses
 
 ```text
-
 PENDING
-
 CONFIRMED
-
 CANCELLED
-
 COMPLETED
-
 ```
 
-
-
-\### Check-in statuses
-
-
+## Check-in statuses
 
 ```text
-
-NOT\_CHECKED\_IN
-
-CHECKED\_IN
-
+NOT_CHECKED_IN
+CHECKED_IN
 ```
 
+Using controlled values helps prevent unsupported state values from being stored in these fields.
 
+---
 
-Using controlled values prevents unsupported state values from being stored through the database schema.
+# 15. Database Defaults
 
+The schema defines the following defaults.
 
-
-\---
-
-
-
-\# 13. Database Defaults
-
-
-
-The schema defines the following default values.
-
-
-
-\### User role
-
-
+## User role
 
 ```text
-
 STUDENT
-
 ```
 
-
-
-\### Resource capacity
-
-
+## Resource capacity
 
 ```text
-
 1
-
 ```
 
-
-
-\### Resource status
-
-
+## Resource status
 
 ```text
-
 AVAILABLE
-
 ```
 
-
-
-\### Reservation status
-
-
+## Reservation status
 
 ```text
-
 CONFIRMED
-
 ```
 
-
-
-\### Check-in status
-
-
+## Check-in status
 
 ```text
-
-NOT\_CHECKED\_IN
-
+NOT_CHECKED_IN
 ```
 
+The `created_at` fields for users, resources, and reservations default to the current timestamp.
 
+---
 
-The `created\_at` fields for users, resources, and reservations default to the current timestamp.
-
-
-
-\---
-
-
-
-\# 14. Timestamp Fields
-
-
+# 16. Timestamp Fields
 
 The schema uses timestamps for creation and check-in tracking.
 
-
-
-\### Users
-
-
+## Users
 
 ```text
-
-created\_at TIMESTAMP DEFAULT CURRENT\_TIMESTAMP
-
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
-
-
-\### Resources
-
-
+## Resources
 
 ```text
-
-created\_at TIMESTAMP DEFAULT CURRENT\_TIMESTAMP
-
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
-
-
-\### Reservations
-
-
+## Reservations
 
 ```text
-
-created\_at TIMESTAMP DEFAULT CURRENT\_TIMESTAMP
-
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
-
-
-\### Check-ins
-
-
+## Check-ins
 
 ```text
-
-checked\_in\_at TIMESTAMP NULL
-
+checked_in_at TIMESTAMP NULL
 ```
-
-
 
 The check-in timestamp can remain `NULL` until the actual check-in occurs.
 
+---
 
-
-\---
-
-
-
-\# 15. Reservation Data Relationships
-
-
+# 17. Reservation Data Relationships
 
 A reservation contains two foreign keys:
 
-
-
 ```text
-
-user\_id
-
-resource\_id
-
+user_id
+resource_id
 ```
 
-
-
-This creates the following relationship:
-
-
+The relationship can be represented as:
 
 ```text
-
-&#x20;            +---------+
-
-&#x20;            |  USERS  |
-
-&#x20;            +----+----+
-
-&#x20;                 |
-
-&#x20;                 | user\_id
-
-&#x20;                 |
-
-&#x20;                 v
-
-&#x20;         +---------------+
-
-&#x20;         | RESERVATIONS  |
-
-&#x20;         +-------+-------+
-
-&#x20;                 ^
-
-&#x20;                 |
-
-&#x20;                 | resource\_id
-
-&#x20;                 |
-
-&#x20;            +----+-------+
-
-&#x20;            | RESOURCES  |
-
-&#x20;            +------------+
-
+             +---------+
+             |  USERS  |
+             +----+----+
+                  |
+                  | user_id
+                  |
+                  v
+          +---------------+
+          | RESERVATIONS  |
+          +-------+-------+
+                  ^
+                  |
+                  | resource_id
+                  |
+             +----+-------+
+             | RESOURCES  |
+             +------------+
 ```
 
+Every reservation identifies:
 
+1. The user making the reservation.
+2. The resource being reserved.
 
-Therefore, every reservation identifies both:
+---
 
-
-
-1\. The user making the reservation.
-
-2\. The resource being reserved.
-
-
-
-\---
-
-
-
-\# 16. Check-in Relationship
-
-
+# 18. Check-in Relationship
 
 The check-in structure is:
 
-
-
 ```text
-
 RESERVATION
-
-&#x20;    |
-
-&#x20;    | reservation\_id
-
-&#x20;    v
-
-&#x20;CHECK\_IN
-
+     |
+     | reservation_id
+     v
+CHECK_IN
 ```
 
+Because `check_ins.reservation_id` is unique, a reservation cannot have multiple check-in records under the database schema.
 
-
-Because `check\_ins.reservation\_id` is unique, a reservation cannot have multiple check-in records under the database schema.
-
-
-
-The check-in record can transition from:
-
-
+The check-in state can transition from:
 
 ```text
-
-NOT\_CHECKED\_IN
-
+NOT_CHECKED_IN
 ```
-
-
 
 to:
 
-
-
 ```text
-
-CHECKED\_IN
-
+CHECKED_IN
 ```
 
+The `checked_in_at` field records the time associated with completed check-in.
 
+---
 
-The `checked\_in\_at` field records the time at which the check-in is completed.
-
-
-
-\---
-
-
-
-\# 17. Database Support for Application Workflows
-
-
+# 19. Database Support for Application Workflows
 
 The database structure directly supports the major CampusReserve workflows.
 
-
-
-\## 17.1 Authentication
-
-
+## 19.1 Authentication
 
 The `users` table stores:
 
-
-
-\* Email
-
-\* Password hash
-
-\* Role
-
-\* Student ID
-
-
+* Email
+* Password hash
+* Role
+* Student ID
 
 These values support registration, login, and authorization.
 
+---
 
-
-\## 17.2 Resource Discovery
-
-
+## 19.2 Resource Discovery
 
 The `resources` table stores:
 
-
-
-\* Resource name
-
-\* Resource type
-
-\* Location
-
-\* Capacity
-
-\* Availability status
-
-
+* Resource name
+* Resource type
+* Location
+* Capacity
+* Availability status
 
 These values support resource browsing and selection.
 
+---
 
-
-\## 17.3 Reservation
-
-
+## 19.3 Reservation
 
 The `reservations` table connects a user with a resource and records:
 
+* Date
+* Start time
+* End time
+* Purpose
+* Status
 
+---
 
-\* Date
+## 19.4 Check-in
 
-\* Start time
+The `check_ins` table connects a check-in record to a reservation and stores:
 
-\* End time
+* QR/token value
+* Check-in timestamp
+* Check-in status
 
-\* Purpose
+---
 
-\* Status
-
-
-
-\## 17.4 Check-in
-
-
-
-The `check\_ins` table connects a check-in record to a reservation and stores:
-
-
-
-\* QR token
-
-\* Check-in timestamp
-
-\* Check-in status
-
-
-
-\---
-
-
-
-\# 18. Database-to-Application Mapping
-
-
+# 20. Database-to-Application Mapping
 
 The Flask backend maps database entities to application models.
 
-
-
 ```text
-
 Database Table       Application Model
-
-\---------------------------------------
-
+---------------------------------------
 users                User
-
 resources            Resource
-
 reservations         Reservation
-
-check\_ins            CheckIn
-
+check_ins            CheckIn
 ```
-
-
 
 The models are located in:
 
-
-
 ```text
-
 backend/app/models/
-
 ```
-
-
 
 The application uses SQLAlchemy to interact with these models.
 
+---
 
+# 21. Database Schema Files
 
-\---
-
-
-
-\# 19. Database Initialization
-
-
-
-The database schema is defined in:
-
-
+The database structure is defined in:
 
 ```text
-
 database/schema.sql
-
 ```
 
+Initial data is defined in:
 
-
-The script creates the database if it does not already exist:
-
-
-
-```sql
-
-CREATE DATABASE IF NOT EXISTS campus\_reservation;
-
+```text
+database/seed.sql
 ```
 
+The schema contains the four application tables:
 
-
-It then selects the database:
-
-
-
-```sql
-
-USE campus\_reservation;
-
+```text
+users
+resources
+reservations
+check_ins
 ```
 
+The schema uses deployment-compatible table creation statements so that it can be applied to an existing database environment.
 
+The database creation script is not responsible for exposing database credentials or application configuration.
 
-The four application tables are subsequently created.
+---
 
+# 22. Schema Initialization and Deployment
 
+The database schema can be initialized using the project's SQL files.
 
-\---
+The schema file:
 
+```text
+database/schema.sql
+```
 
+creates the required application tables.
 
-\# 20. Security Considerations
+The seed file:
 
+```text
+database/seed.sql
+```
 
+provides the initial resource data used by the application.
 
-The database stores password hashes rather than plaintext passwords.
+The deployment-ready schema does not depend on a hard-coded database name being selected inside the SQL script.
 
+Instead, the target database is selected by the database connection used to execute the schema.
 
+This allows the same schema structure to be applied to the configured production database environment.
 
-Database credentials are not part of the frontend application.
+---
 
+# 23. Seeded Resources
 
+The project seed data includes the following initial resources:
 
-Database connection information is supplied through backend environment configuration.
+| ID | Name           | Type       | Location  | Capacity | Status    |
+| -: | -------------- | ---------- | --------- | -------: | --------- |
+|  1 | Computer Lab 1 | LABORATORY | ICT Block |       30 | AVAILABLE |
+|  2 | Computer Lab 2 | LABORATORY | ICT Block |       25 | AVAILABLE |
+|  3 | Study Room A   | STUDY_ROOM | Library   |        8 | AVAILABLE |
+|  4 | Projector 1    | EQUIPMENT  | ICT Store |        1 | AVAILABLE |
 
+These records provide initial reservable resources for the application.
 
+Additional resources can be created or managed through the administrative functionality.
 
-Sensitive configuration values must not be committed to source control.
+---
 
+# 24. Production Database
 
+The production CampusReserve database is hosted on Aiven.
 
-Production database credentials should use secure secret-management or environment configuration.
+The production architecture is:
 
+```text
+Vercel Frontends
+       |
+       | HTTPS
+       v
+Render Flask API
+       |
+       | SQL / SSL
+       v
+Aiven MySQL
+```
 
+The backend uses the production database connection supplied through:
 
-\---
+```text
+DATABASE_URL
+```
 
+The database connection is handled exclusively by the backend.
 
+The frontend applications have no access to the production database credentials.
 
-\# 21. Database Design Constraints
+---
 
+# 25. Local Development Database
 
+During local development, the backend can communicate with a local MySQL installation.
+
+The local environment uses:
+
+```text
+MySQL Community Server 8.0.46
+```
+
+The local database is:
+
+```text
+campus_reservation
+```
+
+The local backend API runs at:
+
+```text
+http://127.0.0.1:5000/api
+```
+
+The local frontend applications communicate with the local Flask API rather than directly with MySQL.
+
+---
+
+# 26. Production Database Connection
+
+The production backend is hosted on Render.
+
+The Render backend connects to the Aiven MySQL database using the configured `DATABASE_URL`.
+
+The backend configuration converts the Aiven MySQL connection to the PyMySQL SQLAlchemy driver when necessary.
+
+The production database connection uses SSL-secured communication.
+
+The frontend applications do not receive or process the database connection string.
+
+---
+
+# 27. Database Security
+
+The database security architecture follows several principles.
+
+### Password protection
+
+Passwords are stored as password hashes.
+
+Plaintext passwords are not stored in the database.
+
+### Backend-only database access
+
+Only the Flask backend communicates with MySQL.
+
+### Environment-based credentials
+
+Database connection information is supplied through environment configuration.
+
+### Secret protection
+
+Sensitive values such as:
+
+```text
+DATABASE_URL
+SECRET_KEY
+JWT_SECRET_KEY
+```
+
+must remain outside source control.
+
+### Production encryption
+
+Communication between the production backend and Aiven MySQL uses SSL.
+
+### Frontend isolation
+
+Neither React frontend contains production database credentials.
+
+---
+
+# 28. Database Testing Architecture
+
+The backend automated tests use an isolated SQLite database for test execution.
+
+This prevents automated tests from modifying the development or production MySQL database.
+
+The test application is created through the same Flask application factory used by the main application.
+
+The testing architecture is therefore:
+
+```text
+pytest
+  |
+  v
+Flask Test Application
+  |
+  v
+SQLite In-Memory Database
+```
+
+The production architecture remains:
+
+```text
+Flask Application
+  |
+  v
+SQLAlchemy / PyMySQL
+  |
+  v
+Aiven MySQL
+```
+
+The separation allows application behavior to be tested safely without depending on the production database.
+
+---
+
+# 29. Database Design Constraints
 
 The current database design establishes the following constraints:
 
+1. Every table has a unique primary key.
+2. User email addresses are unique.
+3. Student IDs are unique when provided.
+4. Every reservation must reference an existing user.
+5. Every reservation must reference an existing resource.
+6. Reservation status values are restricted to the defined enumeration.
+7. Every check-in must reference an existing reservation.
+8. Each reservation can have at most one check-in record.
+9. Each QR token must be unique.
+10. Resource types are restricted to the defined enumeration.
+11. Resource statuses are restricted to the defined enumeration.
+12. Check-in statuses are restricted to the defined enumeration.
+13. Default values are defined for applicable role, status, capacity, and timestamp fields.
 
+---
 
-1\. Every user has a unique primary key.
+# 30. Database Integrity and Application Validation
 
-2\. User email addresses are unique.
+Database constraints provide structural data integrity, while the Flask API provides application-level validation.
 
-3\. Student IDs are unique when provided.
+The backend validates conditions including:
 
-4\. Every resource has a unique primary key.
+* Required fields
+* Valid resource identifiers
+* Resource availability
+* Reservation dates
+* Reservation times
+* Reservation status values
+* User authentication
+* User authorization
+* Reservation ownership
+* Check-in eligibility
+* Duplicate check-in attempts
 
-5\. Every reservation must reference an existing user.
+The database then enforces structural constraints such as:
 
-6\. Every reservation must reference an existing resource.
+* Primary keys
+* Foreign keys
+* Unique values
+* ENUM values
+* NOT NULL requirements
+* Default values
 
-7\. Reservation status values are restricted to the defined enumeration.
-
-8\. Every check-in must reference an existing reservation.
-
-9\. Each reservation can have at most one check-in record.
-
-10\. Each QR token must be unique.
-
-11\. Resource types are restricted to the defined enumeration.
-
-12\. Resource statuses are restricted to the defined enumeration.
-
-13\. Check-in statuses are restricted to the defined enumeration.
-
-
-
-\---
-
-
-
-\# 22. Database Design Summary
-
-
-
-The database can be summarized as:
-
-
+This creates two complementary layers of data protection:
 
 ```text
+Application Validation
+        |
+        v
+Database Constraints
+        |
+        v
+Persistent Data
+```
 
+---
+
+# 31. Database Access Architecture
+
+Database access follows the following path:
+
+```text
+React Frontend
+      |
+      | HTTP / HTTPS
+      v
+Flask REST API
+      |
+      v
+Route Validation
+      |
+      v
+SQLAlchemy Model
+      |
+      v
+PyMySQL
+      |
+      v
+MySQL
+```
+
+The database is therefore isolated from the presentation layer.
+
+No frontend component is designed to execute SQL directly.
+
+---
+
+# 32. Database-to-API Relationship
+
+The database supports the REST API resources exposed by the Flask backend.
+
+The general mapping is:
+
+```text
+users
+   |
+   +---- Authentication / User APIs
+
+resources
+   |
+   +---- Resource APIs
+
+reservations
+   |
+   +---- Reservation APIs
+
+check_ins
+   |
+   +---- Check-in APIs
+```
+
+Administrative API operations use the same underlying database entities but apply additional administrator authorization.
+
+---
+
+# 33. Database Lifecycle
+
+The database lifecycle consists of:
+
+```text
+Schema Definition
+       |
+       v
+Database Initialization
+       |
+       v
+Seed Data
+       |
+       v
+Application Operations
+       |
+       v
+Reservations / Check-ins / Updates
+```
+
+The schema is maintained in the repository.
+
+Seed data provides the initial application resources.
+
+Application operations are performed through the Flask API.
+
+The frontend applications do not directly modify database records.
+
+---
+
+# 34. Database Design Summary
+
+The CampusReserve database can be summarized as:
+
+```text
 USERS
-
-&#x20; |
-
-&#x20; | 1:M
-
-&#x20; v
-
+  |
+  | 1:M
+  v
 RESERVATIONS
-
-&#x20; |
-
-&#x20; | M:1
-
-&#x20; v
-
+  |
+  | M:1
+  v
 RESOURCES
 
 
-
 RESERVATIONS
-
-&#x20; |
-
-&#x20; | 1:0..1
-
-&#x20; v
-
-CHECK\_INS
-
+  |
+  | 1:0..1
+  v
+CHECK_INS
 ```
 
+The central transactional entity is:
 
+```text
+reservations
+```
 
-The central entity is `reservations`, which connects users to resources and provides the parent record for check-in operations.
+It connects users to resources and provides the parent record for check-in operations.
 
+The four-table design provides the persistent data foundation for:
 
+* Authentication
+* Authorization
+* Resource management
+* Reservations
+* Reservation cancellation
+* Check-in
+* QR/token-based check-in
+* Administrative management
 
-This structure provides the persistent data foundation for CampusReserve's authentication, resource reservation, and check-in functionality.
+---
 
+# 35. Current Database Status
 
-
-\---
-
-
-
-\# 23. Current Database Status
-
-
-
-The database schema is implemented for the current CampusReserve project scope.
-
-
+The CampusReserve database schema is implemented for the current project scope.
 
 The schema contains:
 
-
-
 ```text
-
 4 tables
-
 ```
-
-
 
 The primary entities are:
 
-
-
 ```text
-
 users
-
 resources
-
 reservations
-
-check\_ins
-
+check_ins
 ```
 
+The production database is hosted on Aiven and is connected to the Flask backend running on Render.
 
+The database has been initialized with the project's schema and seed resource data.
 
-The schema provides primary keys, foreign keys, uniqueness constraints, enumerated values, defaults, and timestamps required by the current application.
+The deployed application has successfully used the production database for student and administrator workflows, including:
 
+* Authentication
+* Resource retrieval
+* Reservation creation
+* Reservation cancellation
+* Check-in
+* Administrator reservation viewing
+* Administrator check-in viewing
+* Administrator user viewing
 
+---
 
-\---
-
-
-
-\# 24. Future Database Considerations
-
-
+# 36. Future Database Considerations
 
 Future versions of CampusReserve may introduce additional entities or constraints if project requirements expand.
 
+Possible future additions include:
 
+* Audit records
+* Notifications
+* Recurring reservations
+* Equipment-specific attributes
+* More advanced reservation conflict constraints
+* More detailed user profiles
 
-Possible future additions could include:
+Such changes should only be introduced when supported by an actual project requirement.
 
+Future schema changes should preserve existing relationships and application behavior where possible.
 
+---
 
-\* Audit records
+# 37. Conclusion
 
-\* Notifications
+The CampusReserve relational database provides a structured persistent foundation for managing users, resources, reservations, and check-ins.
 
-\* Recurring reservations
+The schema uses:
 
-\* Equipment-specific attributes
+* Primary keys
+* Foreign keys
+* Unique constraints
+* ENUM values
+* NOT NULL constraints
+* Default values
+* Timestamps
 
-\* Reservation conflict constraints
+to maintain data integrity.
 
-\* More detailed user profiles
+The database is accessed exclusively through the Flask backend using SQLAlchemy and PyMySQL.
 
+The production database is hosted on Aiven, while the Flask API is deployed on Render and the React frontend applications are deployed on Vercel.
 
+This architecture keeps database credentials and database operations on the server side while allowing the student and administrator applications to interact with the system through the REST API.
 
-Such changes should only be introduced when supported by an actual project requirement and should preserve existing relationships and application behavior where possible.
-
-
-
-\---
-
-
-
-\# 25. Conclusion
-
-
-
-The CampusReserve relational database provides a structured foundation for managing users, resources, reservations, and check-ins.
-
-
-
-The schema uses primary keys, foreign keys, uniqueness constraints, enumerated values, defaults, and timestamps to maintain data integrity.
-
-
-
-The design supports the existing Flask API and React applications while keeping database access centralized within the backend.
-
-
-
+The four-table relational design is sufficient for the current CampusReserve academic project scope and provides a maintainable foundation for future enhancements.
