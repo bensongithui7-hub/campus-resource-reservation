@@ -629,6 +629,7 @@ function AdminDashboard({ user, onLogout }) {
 
                         {reservation.status === "PENDING" && (
                           <button
+                            className="reservation-confirm"
                             type="button"
                             disabled={
                               updatingReservationId === reservation.id

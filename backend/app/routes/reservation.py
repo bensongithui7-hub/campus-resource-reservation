@@ -94,7 +94,7 @@ def create_reservation():
         start_time=start_time_value,
         end_time=end_time_value,
         purpose=purpose,
-        status="CONFIRMED"
+        status="PENDING"
     )
 
     db.session.add(reservation)
@@ -102,7 +102,7 @@ def create_reservation():
 
     return jsonify({
         "success": True,
-        "message": "Reservation created successfully",
+        "message": "Reservation submitted successfully and is awaiting admin approval",
         "reservation": {
             "id": reservation.id,
             "user_id": reservation.user_id,

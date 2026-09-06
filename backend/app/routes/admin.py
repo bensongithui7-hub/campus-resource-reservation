@@ -164,3 +164,58 @@ def update_resource_status(resource_id):
             "status": resource.status
         }
     }), 200
+
+@admin_bp.route(
+    "/admin/reservations/<int:reservation_id>/status",
+    methods=["PUT"]
+)
+@jwt_required()
+def update_reservation_status(reservation_id):
+    access_error = admin_required()
+
+    if access_error:
+        return access_error
+
+    reservation = db.session.get(Reservation, reservation_id)
+
+    if not reservation:
+        return jsonify({
+            "success": False,
+            "message": "Reservation not found"
+        }), 404
+
+    data = request.get_json()
+
+    if not data or "status" not in data:
+        return jsonify({
+            "success": False,
+            "message": "Status is required"
+        }), 400
+
+    status = data.get("status")
+
+    if status not in [
+        "PENDING",
+        "CONFIRMED",
+        "CANCELLED",
+        "COMPLETED"
+    ]:
+        return jsonify({
+            "success": False,
+            "message": "Invalid reservation status"
+        }), 400
+
+    reservation.status = status
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Reservation status updated successfully",
+        "reservation": {
+            "id": reservation.id,
+            "status": reservation.status
+        }
+    }), 200
+
+
+    

@@ -1277,6 +1277,30 @@ body { background: #f4f7fb !important; color: #1f2937 !important; }
   cursor: not-allowed;
 }
 
+/* RESERVATION CONFIRM BUTTON */
+.reservation-confirm {
+  border: 1px solid #a8d5b5;
+  background: #ffffff;
+  color: #237a3b;
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reservation-confirm:hover {
+  background: #f0faf3;
+  border-color: #7fc493;
+  color: #1d6330;
+}
+
+.reservation-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* MODAL SINGLE-SCROLL LAYOUT */
 .modal-card {
   max-height: min(760px, calc(100vh - 48px));
