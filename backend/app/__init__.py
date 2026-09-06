@@ -21,10 +21,14 @@ def create_app(test_config=None):
     CORS(
         app,
         origins=[
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
             "https://campus-resource-reservation.vercel.app",
             "https://campus-resource-reservation-2vz5.vercel.app",
-        ],
-    )
+    ],
+)
 
     from app.routes.health import health_bp
     app.register_blueprint(health_bp, url_prefix="/api")

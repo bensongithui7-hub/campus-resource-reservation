@@ -597,7 +597,9 @@ function AdminDashboard({ user, onLogout }) {
                           RESERVATION #{reservation.id}
                         </span>
 
-                        <h3>Resource #{reservation.resource_id}</h3>
+                        <h3>
+                          {reservation.resource_name || `Resource #${reservation.resource_id}`}
+                        </h3>
 
                         <p>
                           User #{reservation.user_id}

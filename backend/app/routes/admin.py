@@ -19,7 +19,6 @@ def admin_required():
 
     return None
 
-
 @admin_bp.route("/admin/reservations", methods=["GET"])
 @jwt_required()
 def get_all_reservations():
@@ -40,6 +39,11 @@ def get_all_reservations():
                 "id": reservation.id,
                 "user_id": reservation.user_id,
                 "resource_id": reservation.resource_id,
+                "resource_name": (
+                    db.session.get(Resource, reservation.resource_id).name
+                    if db.session.get(Resource, reservation.resource_id)
+                    else None
+                ),
                 "reservation_date": reservation.reservation_date.isoformat(),
                 "start_time": reservation.start_time.strftime("%H:%M"),
                 "end_time": reservation.end_time.strftime("%H:%M"),
@@ -53,7 +57,6 @@ def get_all_reservations():
             for reservation in reservations
         ]
     }), 200
-
 
 @admin_bp.route("/admin/check-ins", methods=["GET"])
 @jwt_required()
@@ -114,7 +117,10 @@ def get_all_users():
     }), 200
 
 
-@admin_bp.route("/admin/resources/<int:resource_id>/status", methods=["PUT"])
+@admin_bp.route(
+    "/admin/resources/<int:resource_id>/status",
+    methods=["PUT"]
+)
 @jwt_required()
 def update_resource_status(resource_id):
     access_error = admin_required()
@@ -158,4 +164,3 @@ def update_resource_status(resource_id):
             "status": resource.status
         }
     }), 200
-

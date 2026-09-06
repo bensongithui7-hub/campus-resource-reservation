@@ -39,3 +39,8 @@ class Reservation(db.Model):
         db.DateTime,
         server_default=db.func.current_timestamp()
     )
+
+    resource = db.relationship(
+        "Resource",
+        backref="reservations"
+    )
