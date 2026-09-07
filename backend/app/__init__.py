@@ -48,6 +48,9 @@ def create_app(test_config=None):
     from app.routes.check_in import check_in_bp
     app.register_blueprint(check_in_bp, url_prefix="/api")
 
+    from app.routes.notification import notification_bp
+    app.register_blueprint(notification_bp, url_prefix="/api")
+
     from app.routes.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix="/api")
 

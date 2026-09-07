@@ -3,7 +3,7 @@ from datetime import date, time
 from flask_jwt_extended import create_access_token
 
 from app import db
-from app.models import CheckIn, Reservation
+from app.models import CheckIn, Notification, Reservation
 from app.models.user import User
 
 
@@ -277,3 +277,108 @@ def test_update_resource_status_success(
             resource
         )
         assert updated_resource.status == "UNAVAILABLE"
+
+def test_update_reservation_status_confirmed_creates_notification(
+    client, app, admin, student, resource
+):
+    reservation_id = create_reservation(
+        app, student, resource, status="PENDING"
+    )
+    token = admin_token(app, admin)
+
+    response = client.put(
+        f"/api/admin/reservations/{reservation_id}/status",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"status": "CONFIRMED"}
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        notification = Notification.query.filter_by(
+            reservation_id=reservation_id,
+            user_id=student
+        ).first()
+
+        assert notification is not None
+        assert notification.type == "RESERVATION_CONFIRMED"
+        assert notification.is_read is False
+        assert "confirmed" in notification.message.lower()
+
+
+def test_update_reservation_status_cancelled_creates_notification(
+    client, app, admin, student, resource
+):
+    reservation_id = create_reservation(
+        app, student, resource, status="PENDING"
+    )
+    token = admin_token(app, admin)
+
+    response = client.put(
+        f"/api/admin/reservations/{reservation_id}/status",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"status": "CANCELLED"}
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        notification = Notification.query.filter_by(
+            reservation_id=reservation_id,
+            user_id=student
+        ).first()
+
+        assert notification is not None
+        assert notification.type == "RESERVATION_CANCELLED"
+        assert notification.is_read is False
+        assert "cancelled" in notification.message.lower()
+
+
+def test_update_reservation_status_confirmed_to_cancelled_creates_notification(
+    client, app, admin, student, resource
+):
+    reservation_id = create_reservation(
+        app, student, resource, status="CONFIRMED"
+    )
+    token = admin_token(app, admin)
+
+    response = client.put(
+        f"/api/admin/reservations/{reservation_id}/status",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"status": "CANCELLED"}
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        notification = Notification.query.filter_by(
+            reservation_id=reservation_id,
+            user_id=student
+        ).first()
+
+        assert notification is not None
+        assert notification.type == "RESERVATION_CANCELLED"
+
+
+def test_update_reservation_status_completed_creates_no_notification(
+    client, app, admin, student, resource
+):
+    reservation_id = create_reservation(
+        app, student, resource, status="CONFIRMED"
+    )
+    token = admin_token(app, admin)
+
+    response = client.put(
+        f"/api/admin/reservations/{reservation_id}/status",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"status": "COMPLETED"}
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        notifications = Notification.query.filter_by(
+            reservation_id=reservation_id
+        ).all()
+
+        assert notifications == []

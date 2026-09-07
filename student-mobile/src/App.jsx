@@ -12,6 +12,11 @@ import {
 import { getResources } from "./services/resources";
 
 import {
+  getNotifications,
+  markNotificationRead,
+} from "./services/notifications";
+
+import {
   createReservation,
   getReservations,
   cancelReservation,
@@ -195,6 +200,41 @@ function AuthScreen({ onLogin }) {
 
 
 function StudentApp({ user, page, setPage, onLogout }) {
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const data = await getNotifications();
+        setNotifications(data.notifications || []);
+      } catch {
+        // Notifications should not prevent the student portal from loading.
+      }
+    }
+
+    loadNotifications();
+  }, []);
+
+  async function handleNotificationRead(id) {
+    try {
+      await markNotificationRead(id);
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === id
+            ? { ...notification, is_read: true }
+            : notification
+        )
+      );
+    } catch {
+      // Keep the notification visible if marking it as read fails.
+    }
+  }
+
+  const unreadCount = notifications.filter(
+    (notification) => !notification.is_read
+  ).length;
+
   return (
     <div className="student-app">
       <header className="topbar">
@@ -247,6 +287,17 @@ function StudentApp({ user, page, setPage, onLogout }) {
         >
           My Reservations
         </button>
+         <button
+  className={page === "notifications" ? "active" : ""}
+  onClick={() => setPage("notifications")}
+>
+  Notifications
+  {unreadCount > 0 && (
+    <span className="notification-badge">
+      {unreadCount}
+    </span>
+  )}
+</button>
       </nav>
 
       <main className="content">
@@ -261,13 +312,86 @@ function StudentApp({ user, page, setPage, onLogout }) {
         {page === "reservations" && (
           <Reservations />
         )}
+        
+        {page === "notifications" && (
+          <Notifications
+            notifications={notifications}
+            onRead={handleNotificationRead}
+          />
+        )}
       </main>
     </div>
   );
 }
 
+function Notifications({ notifications, onRead }) {
+  if (notifications.length === 0) {
+    return (
+      <section>
+        <div className="page-header">
+          <div>
+            <h1>Notifications</h1>
+            <p>Your reservation updates will appear here.</p>
+          </div>
+        </div>
+
+        <div className="empty-state">
+          <h2>No notifications</h2>
+          <p>You do not have any notifications yet.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <div className="page-header">
+        <div>
+          <h1>Notifications</h1>
+          <p>Your latest reservation updates.</p>
+        </div>
+      </div>
+
+      <div className="notification-list">
+        {notifications.map((notification) => (
+          <article
+            className={`notification-card ${
+              notification.is_read ? "read" : "unread"
+            }`}
+            key={notification.id}
+          >
+            <div>
+              <h3>
+                {notification.type === "RESERVATION_CONFIRMED"
+                  ? "Reservation Confirmed"
+                  : "Reservation Cancelled"}
+              </h3>
+
+              <p>{notification.message}</p>
+
+              <small>
+                {new Date(notification.created_at).toLocaleString()}
+              </small>
+            </div>
+
+            {!notification.is_read && (
+              <button
+                className="secondary-button"
+                onClick={() => onRead(notification.id)}
+              >
+                Mark as read
+              </button>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 
 function Dashboard({ user, setPage }) {
+
   return (
     <section>
       <div className="welcome-card">

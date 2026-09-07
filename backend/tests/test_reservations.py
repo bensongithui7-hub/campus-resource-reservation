@@ -75,7 +75,7 @@ def test_create_reservation_success(client, app, student, resource):
     assert data["reservation"]["start_time"] == "09:00"
     assert data["reservation"]["end_time"] == "11:00"
     assert data["reservation"]["purpose"] == "Software engineering project"
-    assert data["reservation"]["status"] == "CONFIRMED"
+    assert data["reservation"]["status"] == "PENDING"
 
 
 @pytest.mark.parametrize("payload", [

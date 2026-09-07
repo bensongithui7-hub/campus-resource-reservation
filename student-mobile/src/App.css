@@ -638,3 +638,54 @@ textarea {
     font-size: 28px;
   }
 }
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notification-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.notification-card.unread {
+  border-left: 4px solid #2563eb;
+}
+
+.notification-card.read {
+  opacity: 0.8;
+}
+
+.notification-card h3 {
+  margin: 0 0 6px;
+}
+
+.notification-card p {
+  margin: 0 0 8px;
+}
+
+.notification-card small {
+  color: #6b7280;
+}
+
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #dc2626;
+  color: #ffffff;
+}

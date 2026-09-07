@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt
 
 from app import db
-from app.models import CheckIn, Reservation, Resource, User
+from app.models import CheckIn, Notification, Reservation, Resource, User
 
 
 admin_bp = Blueprint("admin", __name__)
@@ -193,19 +193,69 @@ def update_reservation_status(reservation_id):
         }), 400
 
     status = data.get("status")
+    current_status = reservation.status
 
-    if status not in [
-        "PENDING",
-        "CONFIRMED",
-        "CANCELLED",
-        "COMPLETED"
-    ]:
+    allowed_transitions = {
+        "PENDING": ["CONFIRMED", "CANCELLED"],
+        "CONFIRMED": ["COMPLETED", "CANCELLED"],
+        "CANCELLED": [],
+        "COMPLETED": []
+    }
+
+    if status not in allowed_transitions:
         return jsonify({
             "success": False,
             "message": "Invalid reservation status"
         }), 400
 
+    if status not in allowed_transitions[current_status]:
+        return jsonify({
+            "success": False,
+            "message": (
+                f"Cannot change reservation status from "
+                f"{current_status} to {status}"
+            )
+        }), 400
+
     reservation.status = status
+
+    print("NOTIFICATION DEBUG:", reservation.id, reservation.user_id, status)
+
+    resource = db.session.get(Resource, reservation.resource_id)
+
+    if status == "CONFIRMED":
+        message = (
+            f"Your reservation for "
+            f"{resource.name if resource else 'the requested resource'} "
+            f"has been confirmed."
+        )
+
+        notification = Notification(
+            user_id=reservation.user_id,
+            reservation_id=reservation.id,
+            message=message,
+            type="RESERVATION_CONFIRMED"
+        )
+
+        db.session.add(notification)
+        print("NOTIFICATION CREATED:", notification.id, notification.user_id, notification.type)
+
+    elif status == "CANCELLED":
+        message = (
+            f"Your reservation for "
+            f"{resource.name if resource else 'the requested resource'} "
+            f"has been cancelled."
+        )
+
+        notification = Notification(
+            user_id=reservation.user_id,
+            reservation_id=reservation.id,
+            message=message,
+            type="RESERVATION_CANCELLED"
+        )
+
+        db.session.add(notification)
+
     db.session.commit()
 
     return jsonify({
@@ -216,6 +266,3 @@ def update_reservation_status(reservation_id):
             "status": reservation.status
         }
     }), 200
-
-
-    

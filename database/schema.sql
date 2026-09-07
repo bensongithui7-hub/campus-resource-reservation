@@ -45,3 +45,16 @@ CREATE TABLE IF NOT EXISTS check_ins (
 
     FOREIGN KEY (reservation_id) REFERENCES reservations(id)
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    reservation_id INT NULL,
+    message VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (reservation_id) REFERENCES reservations(id)
+);
